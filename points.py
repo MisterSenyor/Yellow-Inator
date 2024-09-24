@@ -35,7 +35,7 @@ async def button_handler(update: Update, context) -> None:
         return 
     else:
                 # Toggle the state of the clicked option
-        option = f"Option {int(query.data) + 1}"
+        option = button_states[query.data][2:]
         if query.data in button_states:
             current_text = button_states[query.data]
             if "⚫" in current_text:

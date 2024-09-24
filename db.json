@@ -1,1 +1,41 @@
-{}
+{"users": {
+    "עידו מנחה": {
+        "battalion": "ארז",
+        "company": "הראל",
+        "platoon": "22",
+        "points": 40
+    },
+    "ניר פסוול": {
+        "battalion": "ארז",
+        "company": "הראל",
+        "platoon": "20",
+        "points": 40
+    },
+    "עילי מידד": {
+        "battalion": "ארז",
+        "company": "הראל",
+        "platoon": "22",
+        "points": 40
+    },
+    "יואב סטרולוביץ'": {
+        "battalion": "ארז",
+        "company": "הראל",
+        "platoon": "19",
+        "points": 40
+    },
+    "יונתן גנץ": {
+        "battalion": "ארז",
+        "company": "הראל",
+        "platoon": "19",
+        "points": 40
+    },
+    "נועם וינגרטן": {
+        "battalion": "ארז",
+        "company": "הראל",
+        "platoon": "18",
+        "points": 40
+    }
+},
+"heirarchy": {
+    "ארז": {"הראל": ["18", "19", "20", "21", "22"]}
+}}
