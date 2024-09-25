@@ -1,41 +1,48 @@
 {"users": {
     "עידו מנחה": {
+        "name": "עידו מנחה",
         "battalion": "ארז",
         "company": "הראל",
-        "platoon": "22",
-        "points": 40
+        "team": "22",
+        "points": 10
     },
     "ניר פסוול": {
+        "name": "ניר פסוול",
         "battalion": "ארז",
         "company": "הראל",
-        "platoon": "20",
-        "points": 40
+        "team": "20",
+        "points": 20
     },
     "עילי מידד": {
+        "name": "עילי מידד",
         "battalion": "ארז",
         "company": "הראל",
-        "platoon": "22",
-        "points": 40
+        "team": "22",
+        "points": 30
     },
     "יואב סטרולוביץ'": {
+        "name": "יואב סטרולוביץ'",
         "battalion": "ארז",
         "company": "הראל",
-        "platoon": "19",
+        "team": "19",
         "points": 40
     },
     "יונתן גנץ": {
+        "name": "יונתן גנץ",
         "battalion": "ארז",
         "company": "הראל",
-        "platoon": "19",
-        "points": 40
+        "team": "19",
+        "points": 50
     },
     "נועם וינגרטן": {
+        "name": "נועם וינגרטן",
         "battalion": "ארז",
         "company": "הראל",
-        "platoon": "18",
-        "points": 40
+        "team": "18",
+        "points": 60
     }
 },
-"heirarchy": {
-    "ארז": {"הראל": ["18", "19", "20", "21", "22"]}
+"groups": {
+    "ארז": {"הראל": ["18", "19", "20", "21", "22"], "ארבל": ["1", "2", "3", "4", "5"]},
+    "ברוש": {"test": ["team", "team"]}
 }}
