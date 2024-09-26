@@ -66,13 +66,13 @@ async def select_participants(update: Update, context: ContextTypes.DEFAULT_TYPE
     global keyboard
     keyboard = []
     button_states = []
-    chosen_users = [x[0] for x in participants]
     workaround_change_name_TODO = update if update.message is not None else update.callback_query
+    chat_id = workaround_change_name_TODO.message.chat_id
+    chosen_users = [x[0] for x in participants[:int(chat_selections[chat_id][1])]]
     _fill_keyboard_by_participants(keyboard, chosen_users)
     keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
-    chat_id = workaround_change_name_TODO.message.chat_id
     chat_selected_options[chat_id] = set()
     
     await workaround_change_name_TODO.edit_message_text('סמן אנשים שתרצה להחליף:', reply_markup=reply_markup) 
@@ -105,9 +105,7 @@ async def handle_group_button(update, context):
             participants = sorted(participants, key=lambda x: x[1]["points"])
             print("SORTED:")
             print(participants)
-            participants = participants[:int(chat_selections[chat_id][1])]
-            print(participants)
-            participants_str = '\n'.join([x[0] for x in participants])
+            participants_str = '\n'.join([x[0] for x in participants[:int(chat_selections[chat_id][1])]])
             await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_selections[chat_id][0]} נקודות לכל משתתף.")
             chat_prompt_state[chat_id] += 1
             await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
@@ -144,7 +142,28 @@ async def handle_group_button(update, context):
         await query.edit_message_text('Please select multiple options:', reply_markup=reply_markup)
 
 async def handle_swap_button(update, context):
-    pass
+    global participants
+    query = update.callback_query
+    print("HANDLE!")
+    global button_states, state_idx
+    print("GOT CALLED")
+    chat_id = query.message.chat_id
+    if query.data == 'submit':
+        participants_str = "\n".join([x[0] for x in participants[:int(chat_selections[chat_id][1])]])
+        await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_selections[chat_id][0]} נקודות לכל משתתף.")
+        chat_prompt_state[chat_id] += 1
+    else:
+        idx = int(query.data)
+        if idx < len(button_states):
+            participants.pop(idx)
+            chosen_users = [x[0] for x in participants[:int(chat_selections[chat_id][1])]]
+            keyboard = []
+            _fill_keyboard_by_participants(keyboard, chosen_users)
+            keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text('סמן אנשים שתרצה להחליף:', reply_markup=reply_markup) 
 
 def prompt_func_generator(prompt: str, init=False) -> None:
     async def prompt_func(update: Update, context) -> None:
@@ -176,7 +195,6 @@ async def handle_number_input(update: Update, context) -> None:
         
     except ValueError:
         await update.message.reply_text("Invalid input. Please input a valid number.")
-
 
 
 points_prompts = [{"prompt": prompt_func_generator("Enter number of points:", init=True), "func": None},
