@@ -1,20 +1,28 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import points
-
+from api import APP, DEFAULT_BUTTON_HANDLER, DEFAULT_INPUT_HANDLER
 
 
 async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f'hello {update.effective_user.first_name}')
 
+commands = {
+    points.COMMAND_NAME: {
+        "initial": points.points_prompts[0]["prompt"],
+        "input_handler": points.INPUT_HANDLER,
+        "button_handler": points.BUTTON_HANDLER,
+    }
+}
 
 def main():
-    app = ApplicationBuilder().token("7899662823:AAHg34XX6f2HedB9ONi_XArgTCgE4hv6q5E").build()
-    app.add_handler(CommandHandler("hello", hello))
-    app.add_handler(CommandHandler("points", points.points_prompts[0]["prompt"]))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, points.handle_number_input))  # Handle the number input
-    app.add_handler(CallbackQueryHandler(points.button_handler))
-    app.run_polling()
+    APP.add_handler(CommandHandler("hello", hello))
+    APP.add_handler(DEFAULT_BUTTON_HANDLER)
+    APP.add_handler(DEFAULT_INPUT_HANDLER)
+    for command, vals in commands.items():
+        APP.add_handler(CommandHandler(command, vals["initial"]))
+    
+    APP.run_polling()
     
     
 if __name__ == "__main__":
