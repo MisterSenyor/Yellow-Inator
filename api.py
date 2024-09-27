@@ -1,9 +1,10 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
+import db
 
-
+groups = db.get_groups()
 APP = ApplicationBuilder().token("7899662823:AAHg34XX6f2HedB9ONi_XArgTCgE4hv6q5E").build()
-
+button_states = []
 def text_prompt_func_generator(prompt: str) -> None:
     async def prompt_func(update: Update, context) -> None:
         global chat_prompt_state, chat_selections
@@ -16,13 +17,69 @@ def text_prompt_func_generator(prompt: str) -> None:
 def init_text_prompt_func_generator(prompt: str, init_func) -> None:
     async def prompt_func(update: Update, context) -> None:
         global chat_prompt_state, chat_selections
-        chat_id = update.message.chat_id
+        workaround_change_name_TODO = update if update.message is not None else update.callback_query
+        chat_id = workaround_change_name_TODO.message.chat_id
         print(f"{chat_id=}")
         init_func(APP, chat_id)
-        message = await update.message.reply_text(prompt)
-        context.user_data['current_command'] = update.message.text.split()[0][1:]
-        context.user_data['message_id'] = message.message_id  # Store the message ID for later deletion
+        if update.message is None:
+            message = await update.callback_query.edit_message_text(prompt)
+            print(f"MESSAGE = {message}")
+            context.user_data['message_id'] = message.message_id  # Store the message ID for later deletion
+        else:
+            message = await update.message.reply_text(prompt)
+            context.user_data['current_command'] = update.message.text.split()[0][1:]
+            context.user_data['message_id'] = message.message_id  # Store the message ID for later deletion
     return prompt_func
+
+def _fill_keyboard_by_group(keyboard, groups, idx=False):
+    global state_idx
+    if type(groups) == dict:
+        for group in groups.keys():
+            if idx:
+                button_states.append(f"⚫ {group}")
+                keyboard.append([InlineKeyboardButton(f"⚫ {group}", callback_data=str(len(button_states) - 1))])
+            else:
+                keyboard.append([InlineKeyboardButton(button_states[state_idx], callback_data=str(state_idx))])
+                state_idx += 1
+                
+            if type(groups[group]) != dict:
+                keyboard.append([])
+                _fill_keyboard_by_group(keyboard[-1], groups[group], idx=idx)
+            else:
+                _fill_keyboard_by_group(keyboard, groups[group], idx=idx)
+    elif type(groups) == list:
+        for group in groups:
+            if idx:
+                button_states.append(f"⚫ {group}")
+                keyboard.append(InlineKeyboardButton(f"⚫ {group}", callback_data=str(len(button_states) - 1)))
+            else:
+                print(f"{state_idx=}")
+                print(len(keyboard))
+                keyboard.append(InlineKeyboardButton(button_states[state_idx], callback_data=str(state_idx)))
+                print(len(keyboard))
+                state_idx += 1
+
+def test():
+    keyboard = []
+    _fill_keyboard_by_group(keyboard, groups, idx=True)
+    keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
+    return keyboard
+
+def button_prompt_func_generator(prompt: str, setup_func, change_prompt=None, *args, **kwargs):
+    async def func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        workaround_change_name_TODO = update if update.message is not None else update.callback_query
+        chat_id = workaround_change_name_TODO.message.chat_id
+        if change_prompt:
+            prompt = change_prompt(chat_id)
+        keyboard = setup_func(chat_id, *args, **kwargs)
+        print(keyboard)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        if update.message is None:
+            await update.callback_query.edit_message_text(prompt, reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(prompt, reply_markup=reply_markup)
+    return func
 
 async def _default_input_handler(update: Update, context) -> None:
     await update.message.reply_text("Echo.")

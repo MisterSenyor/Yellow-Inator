@@ -1,12 +1,11 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, MessageHandler, CallbackQueryHandler, filters
 import db
-from api import text_prompt_func_generator, init_text_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER
+from api import text_prompt_func_generator, init_text_prompt_func_generator, button_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER
 
-chat_selections = {}
-chat_prompt_state = {}
-
-chat_selected_options = {} # {"adfalksjdf": {2,4,6}}
+chat_prompt_state = {} # {"id": idx for points_prompts}
+chat_input = {} # {"id": (5, 3, 2)}
+chat_selected_buttons = {} # {"id": {2,4,6}}
 button_states = []
 state_idx = 0
 participants = []
@@ -15,7 +14,7 @@ groups = db.get_groups()
 
 def _prompt_init_func(app, chat_id):
     chat_prompt_state[chat_id] = 0
-    chat_selections[chat_id] = []  # Initialize the user's number as None
+    chat_input[chat_id] = []  # Initialize the user's number as None
     app.remove_handler(DEFAULT_INPUT_HANDLER)
     app.remove_handler(DEFAULT_BUTTON_HANDLER)
     app.add_handler(INPUT_HANDLER)  # Handle the number input
@@ -49,47 +48,32 @@ def _fill_keyboard_by_group(keyboard, groups, idx=False):
                 print(len(keyboard))
                 state_idx += 1
     
-def _fill_keyboard_by_participants(keyboard, users):
-    for idx, user in enumerate(users):
-        keyboard.append([InlineKeyboardButton(f"{user}", callback_data=idx)])
-
-async def select_groups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    global keyboard
+def select_groups_prompt(chat_id: str) -> None:
+    chat_selected_buttons[chat_id] = set()
     keyboard = []
     _fill_keyboard_by_group(keyboard, groups, idx=True)
     keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    chat_id = update.message.chat_id
-    chat_selected_options[chat_id] = set()
-    
-    await update.message.reply_text('קבוצות מהן לבחור משתתפים:', reply_markup=reply_markup) 
+    return keyboard
 
-async def select_participants(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    global keyboard
+def select_participants_prompt(chat_id: str) -> None:
+    chat_selected_buttons[chat_id] = set()
     keyboard = []
-    workaround_change_name_TODO = update if update.message is not None else update.callback_query
-    chat_id = workaround_change_name_TODO.message.chat_id
-    chosen_users = [x[0] for x in participants[:int(chat_selections[chat_id][1])]]
-    _fill_keyboard_by_participants(keyboard, chosen_users)
+    chosen_users = [x[0] for x in participants[:int(chat_input[chat_id][1])]]
+    for idx, user in enumerate(chosen_users):
+        keyboard.append([InlineKeyboardButton(f"{user}", callback_data=idx)])
     keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    chat_selected_options[chat_id] = set()
-    
-    await workaround_change_name_TODO.edit_message_text('סמן אנשים שתרצה להחליף:', reply_markup=reply_markup) 
-    
+    return keyboard
+
 async def handle_group_button(update, context):
     global participants, button_states, state_idx
     query = update.callback_query
     chat_id = query.message.chat_id
     if query.data == 'submit':
-        if chat_selected_options[chat_id]:
-            participants = db.get_users_by_groups(chat_selected_options[chat_id])
+        if chat_selected_buttons[chat_id]:
+            participants = db.get_users_by_groups(chat_selected_buttons[chat_id])
             participants = sorted(participants, key=lambda x: x[1]["points"])
-            participants_str = '\n'.join([x[0] for x in participants[:int(chat_selections[chat_id][1])]])
-            await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_selections[chat_id][0]} נקודות לכל משתתף.")
+            participants_str = '\n'.join([x[0] for x in participants[:int(chat_input[chat_id][1])]])
+            await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_input[chat_id][0]} נקודות לכל משתתף.")
             chat_prompt_state[chat_id] += 1
             await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
         else:
@@ -101,10 +85,10 @@ async def handle_group_button(update, context):
             current_text = button_states[int(query.data)]
             if "⚫" in current_text:
                 button_states[int(query.data)] = f"🔵 {option}"
-                chat_selected_options[chat_id].add(option)
+                chat_selected_buttons[chat_id].add(option)
             else:
                 button_states[int(query.data)] = f"⚫ {option}"
-                chat_selected_options[chat_id].discard(option)
+                chat_selected_buttons[chat_id].discard(option)
         
         # Rebuild the keyboard with updated states
         keyboard = []
@@ -119,27 +103,31 @@ async def handle_swap_button(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
     if query.data == 'submit':
-        participants_str = "\n".join([x[0] for x in participants[:int(chat_selections[chat_id][1])]])
-        await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_selections[chat_id][0]} נקודות לכל משתתף.")
+        participants_str = "\n".join([x[0] for x in participants[:int(chat_input[chat_id][1])]])
+        await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_input[chat_id][0]} נקודות לכל משתתף.")
+        users_update = {name: {"points": vals["points"] + chat_input[chat_id][0]} for name, vals in participants[:int(chat_input[chat_id][1])]}
+        db.update_db(users_update)
+        
         chat_prompt_state[chat_id] += 1
     else:
         idx = int(query.data)
         if idx < len(button_states):
             participants.pop(idx)
             
-            chosen_users = [x[0] for x in participants[:int(chat_selections[chat_id][1])]]
+            chosen_users = [x[0] for x in participants[:int(chat_input[chat_id][1])]]
             keyboard = []
-            _fill_keyboard_by_participants(keyboard, chosen_users)
+            for idx, user in enumerate(chosen_users):
+                keyboard.append([InlineKeyboardButton(f"{user}", callback_data=idx)])
             keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text('סמן אנשים שתרצה להחליף:', reply_markup=reply_markup) 
 
 async def handle_number_input(update: Update, context) -> None:
-    global chat_selections, chat_prompt_state
+    global chat_input, chat_prompt_state
     chat_id = update.message.chat_id
     try:
         number = int(update.message.text)  # Ensure the input is a valid number
-        chat_selections[chat_id].append(number)  # Store the input number
+        chat_input[chat_id].append(number)  # Store the input number
         # Delete the prompt message
         await context.bot.delete_message(chat_id=update.message.chat_id, message_id=context.user_data['message_id'])
         
@@ -162,8 +150,8 @@ async def button_handler_func(update: Update, context) -> None:
 
 points_prompts = [{"prompt": init_text_prompt_func_generator("Enter number of points:", _prompt_init_func), "func": None},
                 {"prompt": text_prompt_func_generator("Enter number of participants:"), "func": None},
-                {"prompt": select_groups, "func": handle_group_button},
-                {"prompt": select_participants, "func": handle_swap_button}]
+                {"prompt": button_prompt_func_generator('קבוצות מהן לבחור משתתפים:', select_groups_prompt), "func": handle_group_button},
+                {"prompt": button_prompt_func_generator('סמן אנשים שתרצה להחליף:', select_participants_prompt), "func": handle_swap_button}]
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_number_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
