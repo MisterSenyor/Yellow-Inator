@@ -1,4 +1,3 @@
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, MessageHandler, CallbackQueryHandler, filters
 import db
@@ -14,8 +13,6 @@ participants = []
 groups = db.get_groups()
 
 def _prompt_init_func(app, chat_id) -> bool:
-    if db.get_user_by_chat_id(chat_id) is None:
-        return False
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = [None, None]  # Initialize the user's number as None
     app.remove_handler(DEFAULT_INPUT_HANDLER)
@@ -27,18 +24,18 @@ def _prompt_init_func(app, chat_id) -> bool:
 def send_prompt(chat_id: int) -> None:
     keyboard = []
     keyboard.append([InlineKeyboardButton("בטל", callback_data="cancel")])
-    keyboard.append([InlineKeyboardButton("העבר נקודות", callback_data='submit')])
+    keyboard.append([InlineKeyboardButton("מאשר", callback_data='submit')])
     return keyboard
 
 def send_change_prompt(chat_id: int):
-    return f"מאשר שליחת {chat_input[chat_id][1]} נקודות תורנות אל {chat_input[chat_id][0]}?"
+    return f"אתה {chat_input[chat_id]}?"
 
 async def handle_send_button(update, context):
     global participants, button_states, state_idx
     query = update.callback_query
     chat_id = query.message.chat_id
     if query.data == 'submit':
-        await query.edit_message_text(f"נשלחו {chat_input[chat_id][1]} נקודות תורנות אל {chat_input[chat_id][0]}.")
+        await query.edit_message_text(f"שלום, {chat_input[chat_id]}")
         reset_handlers_to_default([INPUT_HANDLER, BUTTON_HANDLER])
     else: # == "cancel"
         chat_prompt_state[chat_id] = 0
@@ -47,33 +44,21 @@ async def handle_send_button(update, context):
 
 async def handle_input(update: Update, context) -> None:
     global chat_input, chat_prompt_state
+    # Manage signup
     chat_id = update.message.chat_id
-    chat_input[chat_id][chat_prompt_state[chat_id]] = update.message.text  # Store the input
-    prompt = None
-    if chat_prompt_state[chat_id] == 0:
-        if False: #unknown name
-            prompt = "Unknown name. Try again:"
-    elif chat_prompt_state[chat_id] == 1:
-        try:
-            points_to_send = int(chat_input[chat_id][1].replace("-", "!"))
-            if False: # if cannot transfer
-                prompt = "Missing Funds. Try again:"
-        except ValueError:
-            prompt = "Not a number. Try again:"
-    if prompt is not None:
-        if update.message is None:
-            message = await update.callback_query.edit_message_text(prompt)
-            print(f"MESSAGE = {message}")
-            context.user_data['message_id'] = message.message_id  # Store the message ID for later deletion
-        else:
-            await context.bot.delete_message(chat_id=update.message.chat_id, message_id=context.user_data['message_id'])
-            message = await update.message.reply_text(prompt)
-            context.user_data['message_id'] = message.message_id
-        prompt = None
-    else:
-        await context.bot.delete_message(chat_id=update.message.chat_id, message_id=context.user_data['message_id'])
-        chat_prompt_state[chat_id] += 1
-        await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
+    # if db.get_user_by_chat_id(chat_id) is not None:
+    #     # Handle existing user
+    #     return
+    uid = update.message.text
+    user = db.get_user_by_uid(uid)
+    if user is None:
+        # Handle nonexisting UID
+        return
+    chat_input[chat_id] = user[1]['name']
+    user[1]['chat_id'] = chat_id
+    db.update_db({user[0]: user[1]})
+    chat_prompt_state[chat_id] += 1
+    await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
 
 async def button_handler_func(update: Update, context) -> None:
     global button_states, state_idx
@@ -86,10 +71,9 @@ async def button_handler_func(update: Update, context) -> None:
     await points_prompts[chat_prompt_state[chat_id]]["func"](update, context)
 
 
-points_prompts = [{"prompt": init_text_prompt_func_generator("Enter name:", _prompt_init_func), "func": None},
-                {"prompt": text_prompt_func_generator("Enter number of points:"), "func": None},
-                {"prompt": button_prompt_func_generator("מאשר?", send_prompt, change_prompt=send_change_prompt), "func": handle_send_button}]
+points_prompts = [{"prompt": init_text_prompt_func_generator("Enter UID:", _prompt_init_func), "func": None},
+                  {"prompt": button_prompt_func_generator("Confirm", send_prompt, change_prompt=send_change_prompt), "func": handle_send_button}]
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
-COMMAND_NAME = "exchange"
+COMMAND_NAME = "signup"

@@ -20,7 +20,9 @@ def init_text_prompt_func_generator(prompt: str, init_func) -> None:
         workaround_change_name_TODO = update if update.message is not None else update.callback_query
         chat_id = workaround_change_name_TODO.message.chat_id
         print(f"{chat_id=}")
-        init_func(APP, chat_id)
+        if not init_func(APP, chat_id):
+            await update.message.reply_text("אנא הירשם בעזרת פקודת '/signup'")
+            return
         if update.message is None:
             message = await update.callback_query.edit_message_text(prompt)
             print(f"MESSAGE = {message}")
@@ -59,29 +61,32 @@ def _fill_keyboard_by_group(keyboard, groups, idx=False):
                 print(len(keyboard))
                 state_idx += 1
 
-def test():
-    keyboard = []
-    _fill_keyboard_by_group(keyboard, groups, idx=True)
-    keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
-    return keyboard
-
 def button_prompt_func_generator(prompt: str, setup_func, change_prompt=None, *args, **kwargs):
     async def func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         workaround_change_name_TODO = update if update.message is not None else update.callback_query
         chat_id = workaround_change_name_TODO.message.chat_id
-        if change_prompt:
-            prompt = change_prompt(chat_id)
+        if change_prompt is not None:
+            final_prompt = change_prompt(chat_id)
+        else:
+            final_prompt = prompt
         keyboard = setup_func(chat_id, *args, **kwargs)
         print(keyboard)
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         if update.message is None:
-            await update.callback_query.edit_message_text(prompt, reply_markup=reply_markup)
+            await update.callback_query.edit_message_text(final_prompt, reply_markup=reply_markup)
         else:
-            await update.message.reply_text(prompt, reply_markup=reply_markup)
+            await update.message.reply_text(final_prompt, reply_markup=reply_markup)
     return func
 
+def reset_handlers_to_default(handlers: list) -> None:
+    for handler in handlers:
+        APP.remove_handler(handler)
+    APP.add_handler(DEFAULT_INPUT_HANDLER)
+    APP.add_handler(DEFAULT_BUTTON_HANDLER)
+
 async def _default_input_handler(update: Update, context) -> None:
+    
     await update.message.reply_text("Echo.")
 
 async def _default_button_handler(update: Update, context) -> None:
@@ -89,5 +94,5 @@ async def _default_button_handler(update: Update, context) -> None:
     await query.answer()
     await update.message.reply_text("Button pressed.")
 
-DEFAULT_INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, _default_button_handler)
-DEFAULT_BUTTON_HANDLER = CallbackQueryHandler(_default_input_handler)
+DEFAULT_INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, _default_input_handler)
+DEFAULT_BUTTON_HANDLER = CallbackQueryHandler(_default_button_handler)

@@ -2,6 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import points
 import exchange
+import signup
 from api import APP, DEFAULT_BUTTON_HANDLER, DEFAULT_INPUT_HANDLER
 
 
@@ -18,6 +19,11 @@ commands = {
         "initial": exchange.points_prompts[0]["prompt"],
         "input_handler": exchange.INPUT_HANDLER,
         "button_handler": exchange.BUTTON_HANDLER,
+    },
+    signup.COMMAND_NAME: {
+        "initial": signup.points_prompts[0]["prompt"],
+        "input_handler": signup.INPUT_HANDLER,
+        "button_handler": signup.BUTTON_HANDLER,
     }
 }
 

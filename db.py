@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 
 DB_PATH = "./db.json"
 
@@ -16,7 +17,7 @@ def write_to_file(file_path):
 def get_groups():
     return _db["groups"]
 
-def get_users_by_groups(groups: dict):
+def get_users_by_groups(groups: list):
     matching_users = []
     # Iterate through each user and their details
     for user, details in _db['users'].items():
@@ -27,6 +28,29 @@ def get_users_by_groups(groups: dict):
                 break
 
     return matching_users
+
+def get_users_by_fields(properties: dict):
+    matching_users = []
+    # Iterate through each user and their details
+    for key, val in properties.items():
+        # Check if any of the user's battalion, company, or platoon match the given criteria
+        for user in _db['users'].keys():
+            if key in _db['users'][user].keys() and _db['users'][user][key] == val:
+                matching_users.append(_db['users'][user])
+                break
+
+    return matching_users
+
+def get_user_by_chat_id(chat_id: int) -> tuple:
+    for username, details in _db['users'].items():
+        if details.get('chat_id') == chat_id:
+            return (username, details)
+    return None
+
+def get_user_by_uid(uid: str) -> tuple:
+    if uid in _db['users'].keys():
+        return (uid, _db['users'][uid])
+    return None
 
 def update_db(data: dict):
     """
@@ -43,6 +67,9 @@ def update_db(data: dict):
 
     write_to_file(DB_PATH)
 
+def load_db_from_excel(filename: str):
+    pass
+    
 def main():
     users = get_users_by_groups(["22"])
     print(f"{users=}")

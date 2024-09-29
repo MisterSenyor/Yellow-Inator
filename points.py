@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, MessageHandler, CallbackQueryHandler, filters
 import db
-from api import text_prompt_func_generator, init_text_prompt_func_generator, button_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER
+from api import APP, text_prompt_func_generator, init_text_prompt_func_generator, button_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER, reset_handlers_to_default
 
 chat_prompt_state = {} # {"id": idx for points_prompts}
 chat_input = {} # {"id": (5, 3, 2)}
@@ -13,12 +13,15 @@ participants = []
 groups = db.get_groups()
 
 def _prompt_init_func(app, chat_id):
+    if db.get_user_by_chat_id(chat_id) is None:
+        return False
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = []  # Initialize the user's number as None
     app.remove_handler(DEFAULT_INPUT_HANDLER)
     app.remove_handler(DEFAULT_BUTTON_HANDLER)
     app.add_handler(INPUT_HANDLER)  # Handle the number input
     app.add_handler(BUTTON_HANDLER)
+    return True
 
 def _fill_keyboard_by_group(keyboard, groups, idx=False):
     global state_idx
@@ -48,17 +51,17 @@ def _fill_keyboard_by_group(keyboard, groups, idx=False):
                 print(len(keyboard))
                 state_idx += 1
     
-def select_groups_prompt(chat_id: str) -> None:
+def select_groups_prompt(chat_id: int) -> None:
     chat_selected_buttons[chat_id] = set()
     keyboard = []
     _fill_keyboard_by_group(keyboard, groups, idx=True)
     keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
     return keyboard
 
-def select_participants_prompt(chat_id: str) -> None:
+def select_participants_prompt(chat_id: int) -> None:
     chat_selected_buttons[chat_id] = set()
     keyboard = []
-    chosen_users = [x[0] for x in participants[:int(chat_input[chat_id][1])]]
+    chosen_users = [x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]]
     for idx, user in enumerate(chosen_users):
         keyboard.append([InlineKeyboardButton(f"{user}", callback_data=idx)])
     keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
@@ -72,7 +75,7 @@ async def handle_group_button(update, context):
         if chat_selected_buttons[chat_id]:
             participants = db.get_users_by_groups(chat_selected_buttons[chat_id])
             participants = sorted(participants, key=lambda x: x[1]["points"])
-            participants_str = '\n'.join([x[0] for x in participants[:int(chat_input[chat_id][1])]])
+            participants_str = '\n'.join([x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]])
             await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_input[chat_id][0]} נקודות לכל משתתף.")
             chat_prompt_state[chat_id] += 1
             await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
@@ -103,18 +106,18 @@ async def handle_swap_button(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
     if query.data == 'submit':
-        participants_str = "\n".join([x[0] for x in participants[:int(chat_input[chat_id][1])]])
+        participants_str = "\n".join([x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]])
         await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_input[chat_id][0]} נקודות לכל משתתף.")
         users_update = {name: {"points": vals["points"] + chat_input[chat_id][0]} for name, vals in participants[:int(chat_input[chat_id][1])]}
         db.update_db(users_update)
-        
+        reset_handlers_to_default([INPUT_HANDLER, BUTTON_HANDLER])
         chat_prompt_state[chat_id] += 1
     else:
         idx = int(query.data)
         if idx < len(button_states):
             participants.pop(idx)
             
-            chosen_users = [x[0] for x in participants[:int(chat_input[chat_id][1])]]
+            chosen_users = [x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]]
             keyboard = []
             for idx, user in enumerate(chosen_users):
                 keyboard.append([InlineKeyboardButton(f"{user}", callback_data=idx)])
