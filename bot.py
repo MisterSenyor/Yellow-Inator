@@ -1,6 +1,8 @@
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import points
+import alert
+
 import exchange
 import signup
 import load_users
