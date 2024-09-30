@@ -3,6 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Callb
 import points
 import exchange
 import signup
+import load_users
 from api import APP, DEFAULT_BUTTON_HANDLER, DEFAULT_INPUT_HANDLER
 
 
@@ -24,6 +25,12 @@ commands = {
         "initial": signup.points_prompts[0]["prompt"],
         "input_handler": signup.INPUT_HANDLER,
         "button_handler": signup.BUTTON_HANDLER,
+    },
+    load_users.COMMAND_NAME: {
+        "initial": load_users.points_prompts[0]["prompt"],
+        "input_handler": load_users.INPUT_HANDLER,
+        "button_handler": load_users.BUTTON_HANDLER,
+        "button_handler": load_users.BUTTON_HANDLER,
     }
 }
 

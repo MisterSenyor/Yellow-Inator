@@ -6,7 +6,7 @@ from api import APP, text_prompt_func_generator, init_text_prompt_func_generator
 chat_prompt_state = {} # {"id": idx for points_prompts}
 chat_input = {} # {"id": (5, 3, 2)}
 chat_selected_buttons = {} # {"id": {2,4,6}}
-button_states = []
+chat_button_states = {}
 state_idx = 0
 participants = []
 
@@ -17,48 +17,49 @@ def _prompt_init_func(app, chat_id):
         return False
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = []  # Initialize the user's number as None
+    chat_button_states[chat_id] = []
     app.remove_handler(DEFAULT_INPUT_HANDLER)
     app.remove_handler(DEFAULT_BUTTON_HANDLER)
     app.add_handler(INPUT_HANDLER)  # Handle the number input
     app.add_handler(BUTTON_HANDLER)
     return True
 
-def _fill_keyboard_by_group(keyboard, groups, idx=False):
+def _fill_keyboard_by_group(chat_id, keyboard, groups, idx=False):
     global state_idx
     if type(groups) == dict:
         for group in groups.keys():
             if idx:
-                button_states.append(f"⚫ {group}")
-                keyboard.append([InlineKeyboardButton(f"⚫ {group}", callback_data=str(len(button_states) - 1))])
+                chat_button_states[chat_id].append(f"⚫ {group}")
+                keyboard.append([InlineKeyboardButton(f"⚫ {group}", callback_data=str(len(chat_button_states[chat_id]) - 1))])
             else:
-                keyboard.append([InlineKeyboardButton(button_states[state_idx], callback_data=str(state_idx))])
+                keyboard.append([InlineKeyboardButton(chat_button_states[chat_id][state_idx], callback_data=str(state_idx))])
                 state_idx += 1
                 
             if type(groups[group]) != dict:
                 keyboard.append([])
-                _fill_keyboard_by_group(keyboard[-1], groups[group], idx=idx)
+                _fill_keyboard_by_group(chat_id, keyboard[-1], groups[group], idx=idx)
             else:
-                _fill_keyboard_by_group(keyboard, groups[group], idx=idx)
+                _fill_keyboard_by_group(chat_id, keyboard, groups[group], idx=idx)
     elif type(groups) == list:
         for group in groups:
             if idx:
-                button_states.append(f"⚫ {group}")
-                keyboard.append(InlineKeyboardButton(f"⚫ {group}", callback_data=str(len(button_states) - 1)))
+                chat_button_states[chat_id].append(f"⚫ {group}")
+                keyboard.append(InlineKeyboardButton(f"⚫ {group}", callback_data=str(len(chat_button_states[chat_id]) - 1)))
             else:
                 print(f"{state_idx=}")
                 print(len(keyboard))
-                keyboard.append(InlineKeyboardButton(button_states[state_idx], callback_data=str(state_idx)))
+                keyboard.append(InlineKeyboardButton(chat_button_states[chat_id][state_idx], callback_data=str(state_idx)))
                 print(len(keyboard))
                 state_idx += 1
     
-def select_groups_prompt(chat_id: int) -> None:
+def select_groups_prompt(app, chat_id: int) -> None:
     chat_selected_buttons[chat_id] = set()
     keyboard = []
-    _fill_keyboard_by_group(keyboard, groups, idx=True)
+    _fill_keyboard_by_group(chat_id, keyboard, groups, idx=True)
     keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
     return keyboard
 
-def select_participants_prompt(chat_id: int) -> None:
+def select_participants_prompt(app, chat_id: int) -> None:
     chat_selected_buttons[chat_id] = set()
     keyboard = []
     chosen_users = [x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]]
@@ -68,7 +69,7 @@ def select_participants_prompt(chat_id: int) -> None:
     return keyboard
 
 async def handle_group_button(update, context):
-    global participants, button_states, state_idx
+    global participants, chat_button_states, state_idx
     query = update.callback_query
     chat_id = query.message.chat_id
     if query.data == 'submit':
@@ -83,38 +84,38 @@ async def handle_group_button(update, context):
             await query.edit_message_text("No options selected.")
     else:
         # Toggle the state of the clicked option
-        option = button_states[int(query.data)][2:]
-        if int(query.data) < len(button_states):
-            current_text = button_states[int(query.data)]
+        option = chat_button_states[chat_id][int(query.data)][2:]
+        if int(query.data) < len(chat_button_states[chat_id]):
+            current_text = chat_button_states[chat_id][int(query.data)]
             if "⚫" in current_text:
-                button_states[int(query.data)] = f"🔵 {option}"
+                chat_button_states[chat_id][int(query.data)] = f"🔵 {option}"
                 chat_selected_buttons[chat_id].add(option)
             else:
-                button_states[int(query.data)] = f"⚫ {option}"
+                chat_button_states[chat_id][int(query.data)] = f"⚫ {option}"
                 chat_selected_buttons[chat_id].discard(option)
         
         # Rebuild the keyboard with updated states
         keyboard = []
         state_idx = 0
-        _fill_keyboard_by_group(keyboard, groups)
+        _fill_keyboard_by_group(chat_id, keyboard, groups)
         keyboard.append([InlineKeyboardButton("Submit Selection", callback_data='submit')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text('Please select multiple options:', reply_markup=reply_markup)
 
 async def handle_swap_button(update, context):
-    global participants, button_states, state_idx
+    global participants, chat_button_states, state_idx
     query = update.callback_query
     chat_id = query.message.chat_id
     if query.data == 'submit':
         participants_str = "\n".join([x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]])
         await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_input[chat_id][0]} נקודות לכל משתתף.")
         users_update = {name: {"points": vals["points"] + chat_input[chat_id][0]} for name, vals in participants[:int(chat_input[chat_id][1])]}
-        db.update_db(users_update)
+        db.update_users_db(users_update)
         reset_handlers_to_default([INPUT_HANDLER, BUTTON_HANDLER])
         chat_prompt_state[chat_id] += 1
     else:
         idx = int(query.data)
-        if idx < len(button_states):
+        if idx < len(chat_button_states[chat_id]):
             participants.pop(idx)
             
             chosen_users = [x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]]
@@ -141,12 +142,12 @@ async def handle_number_input(update: Update, context) -> None:
         await update.message.reply_text("Invalid input. Please input a valid number.")
 
 async def button_handler_func(update: Update, context) -> None:
-    global button_states, state_idx
+    global chat_button_states, state_idx
     query = update.callback_query
     await query.answer()
     chat_id = query.message.chat_id
     
-    global button_states, state_idx
+    global chat_button_states, state_idx
     chat_id = query.message.chat_id
     await points_prompts[chat_prompt_state[chat_id]]["func"](update, context)
     

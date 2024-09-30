@@ -1,4 +1,5 @@
 import json
+import os
 import pandas as pd
 
 DB_PATH = "./db.json"
@@ -52,7 +53,7 @@ def get_user_by_uid(uid: str) -> tuple:
         return (uid, _db['users'][uid])
     return None
 
-def update_db(data: dict):
+def update_users_db(data: dict):
     """
         Write to DB with @data in the following format:
         {"user_id": {
@@ -63,16 +64,37 @@ def update_db(data: dict):
     for name, vals in data.items():
         for key, val in vals.items():
             print(f"{name=}, {key=}, {val=}")
+            if not (name in _db["users"].keys()):
+                _db["users"][name] = {}
             _db["users"][name][key] = val
 
     write_to_file(DB_PATH)
 
 def load_db_from_excel(filename: str):
-    pass
-    
+    # Load the Excel file into a pandas DataFrame
+    df = pd.read_excel(filename)
+
+    # Iterate over each row in the DataFrame
+    for index, row in df.iterrows():
+        name = row['name']
+        battalion = row['battalion']
+        company = row['company']
+        team = row['team']
+
+        # Add user to the database
+        _db['users'][name] = {
+            "name": name,
+            "battalion": battalion,
+            "company": company,
+            "team": team,
+            "points": 0  # Default points can be set to 0
+        }
+    os.remove(filename)
+    write_to_file(DB_PATH)
+
 def main():
-    users = get_users_by_groups(["22"])
-    print(f"{users=}")
+    load_db_from_excel("temp_excel_files\\Harel_data.xlsx")
+    
 
 if __name__ == "__main__":
     main()

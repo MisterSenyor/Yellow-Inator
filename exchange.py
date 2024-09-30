@@ -24,7 +24,7 @@ def _prompt_init_func(app, chat_id) -> bool:
     app.add_handler(BUTTON_HANDLER)
     return True
 
-def send_prompt(chat_id: int) -> None:
+def send_prompt(app, chat_id: int) -> None:
     keyboard = []
     keyboard.append([InlineKeyboardButton("בטל", callback_data="cancel")])
     keyboard.append([InlineKeyboardButton("העבר נקודות", callback_data='submit')])
@@ -39,6 +39,12 @@ async def handle_send_button(update, context):
     chat_id = query.message.chat_id
     if query.data == 'submit':
         await query.edit_message_text(f"נשלחו {chat_input[chat_id][1]} נקודות תורנות אל {chat_input[chat_id][0]}.")
+        target = db.get_users_by_groups([chat_input[chat_id][0]])[0]
+        user = db.get_user_by_chat_id(chat_id)
+        db.update_users_db({
+            user[0]: {"points": user[1]["points"] - int(chat_input[chat_id][1])},
+            target[0]: {"points": target[1]["points"] + int(chat_input[chat_id][1])},
+        })
         reset_handlers_to_default([INPUT_HANDLER, BUTTON_HANDLER])
     else: # == "cancel"
         chat_prompt_state[chat_id] = 0
@@ -51,12 +57,12 @@ async def handle_input(update: Update, context) -> None:
     chat_input[chat_id][chat_prompt_state[chat_id]] = update.message.text  # Store the input
     prompt = None
     if chat_prompt_state[chat_id] == 0:
-        if False: #unknown name
+        if len(db.get_users_by_groups([update.message.text])) < 1: #unknown name
             prompt = "Unknown name. Try again:"
     elif chat_prompt_state[chat_id] == 1:
         try:
             points_to_send = int(chat_input[chat_id][1].replace("-", "!"))
-            if False: # if cannot transfer
+            if db.get_user_by_chat_id(chat_id)[1]["points"] < points_to_send: # if cannot transfer
                 prompt = "Missing Funds. Try again:"
         except ValueError:
             prompt = "Not a number. Try again:"

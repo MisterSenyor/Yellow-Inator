@@ -6,6 +6,7 @@ from api import APP, reset_handlers_to_default, text_prompt_func_generator, init
 chat_prompt_state = {} # {"id": idx for points_prompts}
 chat_input = {} # {"id": (5, 3, 2)}
 chat_selected_buttons = {} # {"id": {2,4,6}}
+button_states = []
 state_idx = 0
 participants = []
 
@@ -75,4 +76,4 @@ points_prompts = [{"prompt": init_text_prompt_func_generator("Enter UID:", _prom
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
-COMMAND_NAME = "signup"
+COMMAND_NAME = "statistics"

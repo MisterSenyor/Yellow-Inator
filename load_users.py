@@ -1,5 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, MessageHandler, CallbackQueryHandler, filters
+import os
 import db
 from api import APP, reset_handlers_to_default, text_prompt_func_generator, init_text_prompt_func_generator, button_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER
 
@@ -8,6 +9,8 @@ chat_input = {} # {"id": (5, 3, 2)}
 chat_selected_buttons = {} # {"id": {2,4,6}}
 state_idx = 0
 participants = []
+TEMP_DIR = "temp_excel_files"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 groups = db.get_groups()
 
@@ -18,6 +21,7 @@ def _prompt_init_func(app, chat_id) -> bool:
     app.remove_handler(DEFAULT_BUTTON_HANDLER)
     app.add_handler(INPUT_HANDLER)  # Handle the number input
     app.add_handler(BUTTON_HANDLER)
+    app.add_handler(FILE_HANDLER)
     return True
 
 def confirm_prompt(app, chat_id: int) -> None:
@@ -69,10 +73,30 @@ async def button_handler_func(update: Update, context) -> None:
     chat_id = query.message.chat_id
     await points_prompts[chat_prompt_state[chat_id]]["func"](update, context)
 
+async def handle_file(update: Update, context) -> None:
+    document = update.message.document
 
-points_prompts = [{"prompt": init_text_prompt_func_generator("Enter UID:", _prompt_init_func), "func": None},
+    # Check if the uploaded file is an Excel file
+    if document.mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
+        file = await document.get_file()  # You need to await this!
+        
+        # Define the file path where the Excel file will be saved
+        file_path = os.path.join(TEMP_DIR, document.file_name)
+        print(f"GOT FILE. DOWNLOADING TO {file_path}")
+        # Download the file asynchronously
+        await file.download_to_drive(file_path)
+        print(f"DOWNLOADED TO {file_path}")
+        await update.message.reply_text(f"Excel file received: {document.file_name}. Processing...")
+
+        # Call the function to load and process the Excel file
+        db.load_db_from_excel(file_path)
+    else:
+        await update.message.reply_text("Please upload a valid Excel file (.xlsx).")
+
+points_prompts = [{"prompt": init_text_prompt_func_generator("Send .xlsx file:", _prompt_init_func), "func": None},
                   {"prompt": button_prompt_func_generator("Confirm", confirm_prompt, change_prompt=confirm_change_prompt), "func": handle_send_button}]
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
-COMMAND_NAME = "signup"
+FILE_HANDLER = MessageHandler(filters.Document.ALL, handle_file)
+COMMAND_NAME = "load_users"

@@ -5,6 +5,7 @@ import db
 groups = db.get_groups()
 APP = ApplicationBuilder().token("7899662823:AAHg34XX6f2HedB9ONi_XArgTCgE4hv6q5E").build()
 button_states = []
+DEFAULT_DIR = "./default_files"
 def text_prompt_func_generator(prompt: str) -> None:
     async def prompt_func(update: Update, context) -> None:
         global chat_prompt_state, chat_selections
@@ -69,7 +70,25 @@ def button_prompt_func_generator(prompt: str, setup_func, change_prompt=None, *a
             final_prompt = change_prompt(chat_id)
         else:
             final_prompt = prompt
-        keyboard = setup_func(chat_id, *args, **kwargs)
+        keyboard = setup_func(APP, chat_id, *args, **kwargs)
+        print(keyboard)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        if update.message is None:
+            await update.callback_query.edit_message_text(final_prompt, reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(final_prompt, reply_markup=reply_markup)
+    return func
+
+def init_button_prompt_func_generator(prompt: str, setup_func, change_prompt=None, *args, **kwargs):
+    async def func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        workaround_change_name_TODO = update if update.message is not None else update.callback_query
+        chat_id = workaround_change_name_TODO.message.chat_id
+        if change_prompt is not None:
+            final_prompt = change_prompt(chat_id)
+        else:
+            final_prompt = prompt
+        keyboard = setup_func(APP, chat_id, *args, **kwargs)
         print(keyboard)
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -93,6 +112,20 @@ async def _default_button_handler(update: Update, context) -> None:
     query = update.callback_query
     await query.answer()
     await update.message.reply_text("Button pressed.")
+
+async def _default_file_handler(update: Update, context) -> None:
+    document = update.message.document
+
+    # Check if the uploaded file is an Excel file
+    file = await document.get_file()  # You need to await this!
+    
+    # Define the file path where the Excel file will be saved
+    file_path = os.path.join(DEFAULT_DIR, document.file_name)
+    print(f"GOT FILE. DOWNLOADING TO {file_path}")
+    # Download the file asynchronously
+    await file.download_to_drive(file_path)
+    print(f"DOWNLOADED TO {file_path}")
+    await update.message.reply_text(f"Excel file received: {document.file_name}. Processing...")
 
 DEFAULT_INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, _default_input_handler)
 DEFAULT_BUTTON_HANDLER = CallbackQueryHandler(_default_button_handler)
