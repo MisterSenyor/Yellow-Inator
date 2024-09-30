@@ -3,9 +3,11 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Callb
 import db
 
 groups = db.get_groups()
+chat_handlers = {}
 APP = ApplicationBuilder().token("7899662823:AAHg34XX6f2HedB9ONi_XArgTCgE4hv6q5E").build()
 button_states = []
 DEFAULT_DIR = "./default_files"
+
 def text_prompt_func_generator(prompt: str) -> None:
     async def prompt_func(update: Update, context) -> None:
         global chat_prompt_state, chat_selections
@@ -18,10 +20,11 @@ def text_prompt_func_generator(prompt: str) -> None:
 def init_text_prompt_func_generator(prompt: str, init_func) -> None:
     async def prompt_func(update: Update, context) -> None:
         global chat_prompt_state, chat_selections
-        workaround_change_name_TODO = update if update.message is not None else update.callback_query
-        chat_id = workaround_change_name_TODO.message.chat_id
+        workaround_change_name_todo = update if update.message is not None else update.callback_query
+        chat_id = workaround_change_name_todo.message.chat_id
+        chat_handlers[chat_id] = {}
         print(f"{chat_id=}")
-        if not init_func(APP, chat_id):
+        if not init_func(APP, chat_id, chat_handlers):
             await update.message.reply_text("אנא הירשם בעזרת פקודת '/signup'")
             return
         if update.message is None:
@@ -105,8 +108,17 @@ def reset_handlers_to_default(handlers: list) -> None:
     APP.add_handler(DEFAULT_BUTTON_HANDLER)
 
 async def _default_input_handler(update: Update, context) -> None:
-    
-    await update.message.reply_text("Echo.")
+    workaround_change_name_todo = update if update.message is not None else update.callback_query
+    chat_id = workaround_change_name_todo.message.chat_id
+    print(chat_handlers)
+    print(chat_id)
+    if chat_id not in chat_handlers.keys():
+        print(1)
+        if "input" not in chat_handlers[chat_id].keys():
+            print(2)
+            await update.message.reply_text("Echo.")
+        return
+    await chat_handlers[chat_id]["input"](update, context)
 
 async def _default_button_handler(update: Update, context) -> None:
     query = update.callback_query

@@ -13,7 +13,7 @@ participants = []
 
 groups = db.get_groups()
 
-def _prompt_init_func(app, chat_id) -> bool:
+def _prompt_init_func(app, chat_id, chat_handlers) -> bool:
     if db.get_user_by_chat_id(chat_id) is None:
         return False
     chat_prompt_state[chat_id] = 0
@@ -58,14 +58,14 @@ async def handle_input(update: Update, context) -> None:
     prompt = None
     if chat_prompt_state[chat_id] == 0:
         if len(db.get_users_by_groups([update.message.text])) < 1: #unknown name
-            prompt = "Unknown name. Try again:"
+            prompt = "שם לא מזוהה. נסה שוב:"
     elif chat_prompt_state[chat_id] == 1:
         try:
             points_to_send = int(chat_input[chat_id][1].replace("-", "!"))
             if db.get_user_by_chat_id(chat_id)[1]["points"] < points_to_send: # if cannot transfer
-                prompt = "Missing Funds. Try again:"
+                prompt = "אין לך מספיק נקודות תורנות להעברה הזו. נסה שוב:"
         except ValueError:
-            prompt = "Not a number. Try again:"
+            prompt = "הוזן קלט לא תקין. אנא נסה שוב להזין מספר:"
     if prompt is not None:
         if update.message is None:
             message = await update.callback_query.edit_message_text(prompt)
@@ -92,8 +92,8 @@ async def button_handler_func(update: Update, context) -> None:
     await points_prompts[chat_prompt_state[chat_id]]["func"](update, context)
 
 
-points_prompts = [{"prompt": init_text_prompt_func_generator("Enter name:", _prompt_init_func), "func": None},
-                {"prompt": text_prompt_func_generator("Enter number of points:"), "func": None},
+points_prompts = [{"prompt": init_text_prompt_func_generator("למי לשלוח?", _prompt_init_func), "func": None},
+                {"prompt": text_prompt_func_generator("כמה נקודות להעביר?"), "func": None},
                 {"prompt": button_prompt_func_generator("מאשר?", send_prompt, change_prompt=send_change_prompt), "func": handle_send_button}]
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)

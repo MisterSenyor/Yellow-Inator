@@ -11,7 +11,7 @@ participants = []
 
 groups = db.get_groups()
 
-def _prompt_init_func(app, chat_id) -> bool:
+def _prompt_init_func(app, chat_id, chat_handlers) -> bool:
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = [None, None]  # Initialize the user's number as None
     app.remove_handler(DEFAULT_INPUT_HANDLER)
@@ -70,8 +70,8 @@ async def button_handler_func(update: Update, context) -> None:
     await points_prompts[chat_prompt_state[chat_id]]["func"](update, context)
 
 
-points_prompts = [{"prompt": init_text_prompt_func_generator("Enter UID:", _prompt_init_func), "func": None},
-                  {"prompt": button_prompt_func_generator("Confirm", confirm_prompt, change_prompt=confirm_change_prompt), "func": handle_send_button}]
+points_prompts = [{"prompt": init_text_prompt_func_generator("אנא הזן מזהה:", _prompt_init_func), "func": None},
+                  {"prompt": button_prompt_func_generator("מאשר?", confirm_prompt, change_prompt=confirm_change_prompt), "func": handle_send_button}]
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)

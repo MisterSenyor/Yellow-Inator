@@ -14,7 +14,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 groups = db.get_groups()
 
-def _prompt_init_func(app, chat_id) -> bool:
+def _prompt_init_func(app, chat_id, chat_handlers) -> bool:
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = [None, None]  # Initialize the user's number as None
     app.remove_handler(DEFAULT_INPUT_HANDLER)
@@ -86,15 +86,15 @@ async def handle_file(update: Update, context) -> None:
         # Download the file asynchronously
         await file.download_to_drive(file_path)
         print(f"DOWNLOADED TO {file_path}")
-        await update.message.reply_text(f"Excel file received: {document.file_name}. Processing...")
+        await update.message.reply_text(f"הקובץ התקבל: {document.file_name}. מנתח...")
 
         # Call the function to load and process the Excel file
         db.load_db_from_excel(file_path)
     else:
-        await update.message.reply_text("Please upload a valid Excel file (.xlsx).")
+        await update.message.reply_text("יש להעלות קבצי אקסל בלבד!")
 
-points_prompts = [{"prompt": init_text_prompt_func_generator("Send .xlsx file:", _prompt_init_func), "func": None},
-                  {"prompt": button_prompt_func_generator("Confirm", confirm_prompt, change_prompt=confirm_change_prompt), "func": handle_send_button}]
+points_prompts = [{"prompt": init_text_prompt_func_generator("אנא שלח קובץ אקסל בהתאם לפורמט:", _prompt_init_func), "func": None},
+                  {"prompt": button_prompt_func_generator("מאשר?", confirm_prompt, change_prompt=confirm_change_prompt), "func": handle_send_button}]
 
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
