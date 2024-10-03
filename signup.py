@@ -6,7 +6,7 @@ from api import APP, reset_handlers_to_default, text_prompt_func_generator, init
 chat_prompt_state = {} # {"id": idx for points_prompts}
 chat_input = {} # {"id": (5, 3, 2)}
 chat_selected_buttons = {} # {"id": {2,4,6}}
-state_idx = 0
+chat_state_idx = {}
 participants = []
 
 groups = db.get_groups()
@@ -14,10 +14,8 @@ groups = db.get_groups()
 def _prompt_init_func(app, chat_id, chat_handlers) -> bool:
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = [None, None]  # Initialize the user's number as None
-    app.remove_handler(DEFAULT_INPUT_HANDLER)
-    app.remove_handler(DEFAULT_BUTTON_HANDLER)
-    app.add_handler(INPUT_HANDLER)  # Handle the number input
-    app.add_handler(BUTTON_HANDLER)
+    chat_handlers[chat_id]["input"] = handle_input
+    chat_handlers[chat_id]["button"] = button_handler_func
     return True
 
 def confirm_prompt(app, chat_id: int) -> None:
@@ -35,7 +33,7 @@ async def handle_send_button(update, context):
     chat_id = query.message.chat_id
     if query.data == 'submit':
         await query.edit_message_text(f"שלום, {chat_input[chat_id]}")
-        reset_handlers_to_default([INPUT_HANDLER, BUTTON_HANDLER])
+        reset_handlers_to_default(chat_id)
     else: # == "cancel"
         chat_prompt_state[chat_id] = 0
         chat_input[chat_id] = set()

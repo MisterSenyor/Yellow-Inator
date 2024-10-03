@@ -1,8 +1,8 @@
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import points
-import alert
-
+# import alert
+import user_statistics
 import exchange
 import signup
 import load_users
@@ -20,26 +20,22 @@ menu = []
 commands = {
     points.COMMAND_NAME: {
         "initial": points.points_prompts[0]["prompt"],
-        "input_handler": points.INPUT_HANDLER,
-        "button_handler": points.BUTTON_HANDLER,
         "description": "סתם פונקציה"
     },
     exchange.COMMAND_NAME: {
         "initial": exchange.points_prompts[0]["prompt"],
-        "input_handler": exchange.INPUT_HANDLER,
-        "button_handler": exchange.BUTTON_HANDLER,
         "description": "סתם פונקציה"
     },
     signup.COMMAND_NAME: {
         "initial": signup.points_prompts[0]["prompt"],
-        "input_handler": signup.INPUT_HANDLER,
-        "button_handler": signup.BUTTON_HANDLER,
         "description": "סתם פונקציה"
     },
     load_users.COMMAND_NAME: {
         "initial": load_users.points_prompts[0]["prompt"],
-        "input_handler": load_users.INPUT_HANDLER,
-        "button_handler": load_users.BUTTON_HANDLER,
+        "description": "סתם פונקציה"
+    },
+    user_statistics.COMMAND_NAME: {
+        "initial": user_statistics.points_prompts[0]["prompt"],
         "description": "סתם פונקציה"
     }
 }

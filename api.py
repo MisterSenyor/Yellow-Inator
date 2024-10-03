@@ -11,9 +11,13 @@ DEFAULT_DIR = "./default_files"
 def text_prompt_func_generator(prompt: str) -> None:
     async def prompt_func(update: Update, context) -> None:
         global chat_prompt_state, chat_selections
-        chat_id = update.message.chat_id
+        workaround_change_name_TODO = update if update.message is not None else update.callback_query
+        chat_id = workaround_change_name_TODO.message.chat_id
         print(f"{chat_id=}")
-        message = await update.message.reply_text(prompt)
+        if update.message is None:
+            message = await update.callback_query.edit_message_text(prompt)
+        else:
+            message = await update.message.reply_text(prompt)
         context.user_data['message_id'] = message.message_id  # Store the message ID for later deletion
     return prompt_func
 
@@ -83,10 +87,14 @@ def button_prompt_func_generator(prompt: str, setup_func, change_prompt=None, *a
             await update.message.reply_text(final_prompt, reply_markup=reply_markup)
     return func
 
-def init_button_prompt_func_generator(prompt: str, setup_func, change_prompt=None, *args, **kwargs):
+def init_button_prompt_func_generator(prompt: str, setup_func, init_func, change_prompt=None, *args, **kwargs):
     async def func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         workaround_change_name_TODO = update if update.message is not None else update.callback_query
         chat_id = workaround_change_name_TODO.message.chat_id
+        chat_handlers[chat_id] = {}
+        if not init_func(APP, chat_id, chat_handlers):
+            await update.message.reply_text("אנא הירשם בעזרת פקודת '/signup'")
+            return
         if change_prompt is not None:
             final_prompt = change_prompt(chat_id)
         else:
@@ -101,11 +109,8 @@ def init_button_prompt_func_generator(prompt: str, setup_func, change_prompt=Non
             await update.message.reply_text(final_prompt, reply_markup=reply_markup)
     return func
 
-def reset_handlers_to_default(handlers: list) -> None:
-    for handler in handlers:
-        APP.remove_handler(handler)
-    APP.add_handler(DEFAULT_INPUT_HANDLER)
-    APP.add_handler(DEFAULT_BUTTON_HANDLER)
+def reset_handlers_to_default(chat_id: int) -> None:
+    chat_handlers[chat_id] = {}
 
 async def _default_input_handler(update: Update, context) -> None:
     workaround_change_name_todo = update if update.message is not None else update.callback_query
@@ -122,8 +127,15 @@ async def _default_input_handler(update: Update, context) -> None:
 
 async def _default_button_handler(update: Update, context) -> None:
     query = update.callback_query
-    await query.answer()
-    await update.message.reply_text("Button pressed.")
+    workaround_change_name_todo = update if update.message is not None else update.callback_query
+    chat_id = workaround_change_name_todo.message.chat_id
+    print(chat_handlers)
+    print(chat_id)
+    if chat_id not in chat_handlers.keys() or "button" not in chat_handlers[chat_id].keys():
+        await query.answer()
+        await update.message.reply_text("Button pressed.")
+        return
+    await chat_handlers[chat_id]["button"](update, context)
 
 async def _default_file_handler(update: Update, context) -> None:
     document = update.message.document

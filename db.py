@@ -32,13 +32,14 @@ def get_users_by_groups(groups: list):
 
 def get_users_by_fields(properties: dict):
     matching_users = []
-    # Iterate through each user and their details
-    for key, val in properties.items():
-        # Check if any of the user's battalion, company, or platoon match the given criteria
-        for user in _db['users'].keys():
-            if key in _db['users'][user].keys() and _db['users'][user][key] == val:
-                matching_users.append(_db['users'][user])
+    for user in _db['users'].keys():
+        flag = True
+        for key, val in properties.items():
+            if not (key in _db['users'][user].keys() and _db['users'][user][key] == val):
+                flag = False
                 break
+        if flag:
+            matching_users.append(_db['users'][user])
 
     return matching_users
 
@@ -79,7 +80,7 @@ def load_db_from_excel(filename: str):
         name = row['name']
         battalion = row['battalion']
         company = row['company']
-        team = row['team']
+        team = str(row['team'])
 
         # Add user to the database
         _db['users'][name] = {

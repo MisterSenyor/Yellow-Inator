@@ -1,3 +1,4 @@
+"""
 from points import *
 import aspose.words as aw
 
@@ -65,3 +66,4 @@ alert_prompts = [{"prompt": prompt_func_generator("תיאור האירוע:", in
                 {"prompt": prompt_func_generator("תוצאות האירוע:"), "func": None},
                 {"prompt": prompt_func_generator("לקחים:"), "func": None},
                 {"prompt": submit_button, "func": handle_submit_button}]
+"""
