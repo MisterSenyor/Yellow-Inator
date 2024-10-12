@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, MessageHandler, CallbackQueryHandler, filters
 import db
-from api import APP, text_prompt_func_generator, init_text_prompt_func_generator, button_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER, reset_handlers_to_default
+from api import APP, INIT_AUTH_ENUM, text_prompt_func_generator, init_text_prompt_func_generator, button_prompt_func_generator, DEFAULT_INPUT_HANDLER, DEFAULT_BUTTON_HANDLER, reset_handlers_to_default
 
 chat_prompt_state = {} # {"id": idx for points_prompts}
 chat_input = {} # {"id": (5, 3, 2)}
@@ -10,17 +10,21 @@ chat_button_states = {}
 chat_state_idx = {}
 participants = []
 
+
+
 groups = db.get_groups()
 
 def _prompt_init_func(app, chat_id, chat_handlers):
-    if db.get_user_by_chat_id(chat_id) is None:
-        return False
+    if (user := db.get_user_by_chat_id(chat_id)) is None:
+        return INIT_AUTH_ENUM["NOT_SIGNED_IN"]
+    if ROLES != set() and list(set(user[1]["roles"]) & ROLES) == [] and not ("ADMIN" in user[1]["roles"]):
+        return INIT_AUTH_ENUM["NO_PERMISSION"]
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = []  # Initialize the user's number as None
     chat_button_states[chat_id] = []
     chat_handlers[chat_id]["input"] = handle_number_input
     chat_handlers[chat_id]["button"] = button_handler_func
-    return True
+    return None
 
 def _fill_keyboard_by_group(chat_id, keyboard, groups, idx=False):
     if type(groups) == dict:
@@ -64,7 +68,7 @@ def select_participants_prompt(app, chat_id: int) -> None:
     keyboard.append([InlineKeyboardButton("סיימתי", callback_data='submit')])
     return keyboard
 
-async def handle_group_button(update, context):
+async def handle_group_button(update, context: ContextTypes.DEFAULT_TYPE):
     global participants, chat_button_states
     query = update.callback_query
     chat_id = query.message.chat_id
@@ -98,7 +102,7 @@ async def handle_group_button(update, context):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text('אנא בחר את הקבוצות הרלוונטיות:', reply_markup=reply_markup)
 
-async def handle_swap_button(update, context):
+async def handle_swap_button(update, context: ContextTypes.DEFAULT_TYPE):
     global participants, chat_button_states
     query = update.callback_query
     chat_id = query.message.chat_id
@@ -122,7 +126,7 @@ async def handle_swap_button(update, context):
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text('סמן אנשים שתרצה להחליף:', reply_markup=reply_markup) 
 
-async def handle_number_input(update: Update, context) -> None:
+async def handle_number_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global chat_input, chat_prompt_state
     chat_id = update.message.chat_id
     try:
@@ -137,7 +141,7 @@ async def handle_number_input(update: Update, context) -> None:
     except ValueError:
         await update.message.reply_text("הוזן קלט לא תקין. נסה שוב:")
 
-async def button_handler_func(update: Update, context) -> None:
+async def button_handler_func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global chat_button_states
     query = update.callback_query
     await query.answer()
@@ -153,3 +157,5 @@ points_prompts = [{"prompt": init_text_prompt_func_generator("כמה נקודו�
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_number_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
 COMMAND_NAME = "points"
+COMMAND_DESCRIPTION = "יצירת רשימת תורנים"
+ROLES = {"קלפ"}

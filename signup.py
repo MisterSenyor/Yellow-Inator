@@ -16,7 +16,7 @@ def _prompt_init_func(app, chat_id, chat_handlers) -> bool:
     chat_input[chat_id] = [None, None]  # Initialize the user's number as None
     chat_handlers[chat_id]["input"] = handle_input
     chat_handlers[chat_id]["button"] = button_handler_func
-    return True
+    return None
 
 def confirm_prompt(app, chat_id: int) -> None:
     keyboard = []
@@ -27,7 +27,7 @@ def confirm_prompt(app, chat_id: int) -> None:
 def confirm_change_prompt(chat_id: int):
     return f"אתה {chat_input[chat_id]}?"
 
-async def handle_send_button(update, context):
+async def handle_send_button(update, context: ContextTypes.DEFAULT_TYPE):
     global participants, button_states, state_idx
     query = update.callback_query
     chat_id = query.message.chat_id
@@ -39,7 +39,7 @@ async def handle_send_button(update, context):
         chat_input[chat_id] = set()
         await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
 
-async def handle_input(update: Update, context) -> None:
+async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global chat_input, chat_prompt_state
     # Manage signup
     chat_id = update.message.chat_id
@@ -57,7 +57,7 @@ async def handle_input(update: Update, context) -> None:
     chat_prompt_state[chat_id] += 1
     await points_prompts[chat_prompt_state[chat_id]]["prompt"](update, context)
 
-async def button_handler_func(update: Update, context) -> None:
+async def button_handler_func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global button_states, state_idx
     query = update.callback_query
     await query.answer()
@@ -74,3 +74,5 @@ points_prompts = [{"prompt": init_text_prompt_func_generator("אנא הזן מז
 INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input)
 BUTTON_HANDLER = CallbackQueryHandler(button_handler_func)
 COMMAND_NAME = "signup"
+COMMAND_DESCRIPTION = "הזדהות משתמש"
+ROLES = set()

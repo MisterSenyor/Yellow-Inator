@@ -1,15 +1,23 @@
+import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
+from enum import Enum
 import db
 
 groups = db.get_groups()
 chat_handlers = {}
-APP = ApplicationBuilder().token("7899662823:AAHg34XX6f2HedB9ONi_XArgTCgE4hv6q5E").build()
+APP = ApplicationBuilder().token("7308402309:AAF-XK8EQxTdugA-rsebW9NrLkdtwRmwa4Y").build()
 button_states = []
 DEFAULT_DIR = "./default_files"
+TEMP_DIR = "temp_excel_files"
+INIT_AUTH_ENUM = {
+    "NOT_SIGNED_IN": "אנא הירשם בעזרת פקודת '/signup'",
+    "NO_PERMISSION": "אין לך הרשאות לפקודה הזו. אנא פנה לקל\"פ"
+}
+
 
 def text_prompt_func_generator(prompt: str) -> None:
-    async def prompt_func(update: Update, context) -> None:
+    async def prompt_func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global chat_prompt_state, chat_selections
         workaround_change_name_TODO = update if update.message is not None else update.callback_query
         chat_id = workaround_change_name_TODO.message.chat_id
@@ -22,14 +30,14 @@ def text_prompt_func_generator(prompt: str) -> None:
     return prompt_func
 
 def init_text_prompt_func_generator(prompt: str, init_func) -> None:
-    async def prompt_func(update: Update, context) -> None:
+    async def prompt_func(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global chat_prompt_state, chat_selections
         workaround_change_name_todo = update if update.message is not None else update.callback_query
         chat_id = workaround_change_name_todo.message.chat_id
         chat_handlers[chat_id] = {}
         print(f"{chat_id=}")
-        if not init_func(APP, chat_id, chat_handlers):
-            await update.message.reply_text("אנא הירשם בעזרת פקודת '/signup'")
+        if (init_ret := init_func(APP, chat_id, chat_handlers)) is not None:
+            await update.message.reply_text(init_ret)
             return
         if update.message is None:
             message = await update.callback_query.edit_message_text(prompt)
@@ -112,20 +120,17 @@ def init_button_prompt_func_generator(prompt: str, setup_func, init_func, change
 def reset_handlers_to_default(chat_id: int) -> None:
     chat_handlers[chat_id] = {}
 
-async def _default_input_handler(update: Update, context) -> None:
+async def _default_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     workaround_change_name_todo = update if update.message is not None else update.callback_query
     chat_id = workaround_change_name_todo.message.chat_id
     print(chat_handlers)
     print(chat_id)
-    if chat_id not in chat_handlers.keys():
-        print(1)
-        if "input" not in chat_handlers[chat_id].keys():
-            print(2)
-            await update.message.reply_text("Echo.")
+    if chat_id not in chat_handlers.keys() or "input" not in chat_handlers[chat_id].keys():
+        await update.message.reply_text("Echo.")
         return
     await chat_handlers[chat_id]["input"](update, context)
 
-async def _default_button_handler(update: Update, context) -> None:
+async def _default_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     workaround_change_name_todo = update if update.message is not None else update.callback_query
     chat_id = workaround_change_name_todo.message.chat_id
@@ -137,19 +142,16 @@ async def _default_button_handler(update: Update, context) -> None:
         return
     await chat_handlers[chat_id]["button"](update, context)
 
-async def _default_file_handler(update: Update, context) -> None:
+async def _default_file_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     document = update.message.document
+    workaround_change_name_todo = update if update.message is not None else update.callback_query
+    chat_id = workaround_change_name_todo.message.chat_id
 
-    # Check if the uploaded file is an Excel file
-    file = await document.get_file()  # You need to await this!
-    
-    # Define the file path where the Excel file will be saved
-    file_path = os.path.join(DEFAULT_DIR, document.file_name)
-    print(f"GOT FILE. DOWNLOADING TO {file_path}")
-    # Download the file asynchronously
-    await file.download_to_drive(file_path)
-    print(f"DOWNLOADED TO {file_path}")
-    await update.message.reply_text(f"Excel file received: {document.file_name}. Processing...")
+    if chat_id not in chat_handlers.keys() or "file" not in chat_handlers[chat_id].keys():
+        await update.message.reply_text("Button pressed.")
+        return
+    await chat_handlers[chat_id]["file"](update, context)
 
 DEFAULT_INPUT_HANDLER = MessageHandler(filters.TEXT & ~filters.COMMAND, _default_input_handler)
 DEFAULT_BUTTON_HANDLER = CallbackQueryHandler(_default_button_handler)
+DEFAULT_FILE_HANDLER = MessageHandler(filters.Document.ALL, _default_file_handler)

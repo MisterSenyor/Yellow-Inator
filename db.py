@@ -74,22 +74,44 @@ def update_users_db(data: dict):
 def load_db_from_excel(filename: str):
     # Load the Excel file into a pandas DataFrame
     df = pd.read_excel(filename)
-
+    groups = {}
+    all_roles = set()
     # Iterate over each row in the DataFrame
     for index, row in df.iterrows():
         name = row['name']
         battalion = row['battalion']
         company = row['company']
         team = str(row['team'])
-
+        roles = [] if str(row['roles']) == 'nan' else [role.strip() for role in str(row['roles']).split(",")]
+        if roles == ['']:
+            roles = []
+        # add to db
+        all_roles = all_roles | set(roles)
+        if battalion not in groups.keys():
+            groups[battalion] = dict()
+        if company not in groups[battalion].keys():
+            groups[battalion][company] = []
+        if team not in groups[battalion][company]:
+            groups[battalion][company].append(team)
         # Add user to the database
         _db['users'][name] = {
             "name": name,
             "battalion": battalion,
             "company": company,
             "team": team,
-            "points": 0  # Default points can be set to 0
+            "points": 0,  # Default points can be set to 0
+            "roles": roles
         }
+    _db["roles"] = list(set(_db["roles"]) | all_roles)
+    for battalion in groups:
+        if battalion not in _db["groups"].keys():
+            _db["groups"][battalion] = dict()
+        for company in groups[battalion]:
+            if company not in _db["groups"][battalion].keys():
+                _db["groups"][battalion][company] = []
+            for team in groups[battalion][company]:
+                if team not in _db["groups"][battalion][company]:
+                    _db["groups"][battalion][company].append(team)
     os.remove(filename)
     write_to_file(DB_PATH)
 
