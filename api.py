@@ -100,8 +100,8 @@ def init_button_prompt_func_generator(prompt: str, setup_func, init_func, change
         workaround_change_name_TODO = update if update.message is not None else update.callback_query
         chat_id = workaround_change_name_TODO.message.chat_id
         chat_handlers[chat_id] = {}
-        if not init_func(APP, chat_id, chat_handlers):
-            await update.message.reply_text("אנא הירשם בעזרת פקודת '/signup'")
+        if (init_ret := init_func(APP, chat_id, chat_handlers)) is not None:
+            await update.message.reply_text(init_ret)
             return
         if change_prompt is not None:
             final_prompt = change_prompt(chat_id)

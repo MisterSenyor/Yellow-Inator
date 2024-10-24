@@ -18,7 +18,10 @@ def write_to_file(file_path):
 def get_groups():
     return _db["groups"]
 
-def get_users_by_groups(groups: list):
+def get_roles():
+    return _db["roles"]
+
+def get_users_by_groups_OR(groups: list):
     matching_users = []
     # Iterate through each user and their details
     for user, details in _db['users'].items():
@@ -28,6 +31,26 @@ def get_users_by_groups(groups: list):
                 matching_users.append((user, details))
                 break
 
+    return matching_users
+
+def _to_set(input: list) -> set:
+    output = set()
+    for value in input:
+        if type(value) == list or type(value) == dict or type(value) == set:
+            continue
+        output.add(value)
+    
+    return output
+
+def get_users_by_groups_AND(properties: list):
+    matching_users = []
+    print("PROPERTIES:")
+    print(set(properties))
+    for user in _db['users'].keys():
+        print("TEST")
+        print(_to_set(_db['users'][user].values()))
+        if _to_set(_db['users'][user].values()) & set(properties) == set(properties):
+            matching_users.append((user, _db['users'][user]))
     return matching_users
 
 def get_users_by_fields(properties: dict):

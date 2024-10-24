@@ -74,7 +74,7 @@ async def handle_group_button(update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.message.chat_id
     if query.data == 'submit':
         if chat_selected_buttons[chat_id]:
-            participants = db.get_users_by_groups(chat_selected_buttons[chat_id])
+            participants = db.get_users_by_groups_OR(chat_selected_buttons[chat_id])
             participants = sorted(participants, key=lambda x: x[1]["points"])
             participants_str = '\n'.join([x[1]['name'] for x in participants[:int(chat_input[chat_id][1])]])
             await query.edit_message_text(f"המשתתפים הם:\n{participants_str}\nעם {chat_input[chat_id][0]} נקודות לכל משתתף.")

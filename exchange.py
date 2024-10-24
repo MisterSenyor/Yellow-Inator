@@ -35,7 +35,7 @@ async def handle_send_button(update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.message.chat_id
     if query.data == 'submit':
         await query.edit_message_text(f"נשלחו {chat_input[chat_id][1]} נקודות תורנות אל {chat_input[chat_id][0]}.")
-        target = db.get_users_by_groups([chat_input[chat_id][0]])[0]
+        target = db.get_users_by_groups_OR([chat_input[chat_id][0]])[0]
         user = db.get_user_by_chat_id(chat_id)
         db.update_users_db({
             user[0]: {"points": user[1]["points"] - int(chat_input[chat_id][1])},
@@ -53,7 +53,7 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     chat_input[chat_id][chat_prompt_state[chat_id]] = update.message.text  # Store the input
     prompt = None
     if chat_prompt_state[chat_id] == 0:
-        if len(db.get_users_by_groups([update.message.text])) < 1: #unknown name
+        if len(db.get_users_by_groups_OR([update.message.text])) < 1: #unknown name
             prompt = "שם לא מזוהה. נסה שוב:"
     elif chat_prompt_state[chat_id] == 1:
         try:
