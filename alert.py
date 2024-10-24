@@ -29,7 +29,7 @@ async def submit_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_text('דווח:', reply_markup=reply_markup) 
 
 
-async def handle_submit_button(update, context):
+async def handle_submit_button(update, context: ContextTypes.DEFAULT_TYPE):
     global participants
     query = update.callback_query
     print("HANDLE!")
