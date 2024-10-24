@@ -6,6 +6,7 @@ import user_statistics
 import exchange
 import signup
 import load_users
+import alert
 from api import APP, DEFAULT_BUTTON_HANDLER, DEFAULT_FILE_HANDLER, DEFAULT_INPUT_HANDLER
 
 
@@ -37,6 +38,10 @@ commands = {
     user_statistics.COMMAND_NAME: {
         "initial": user_statistics.points_prompts[0]["prompt"],
         "description": user_statistics.COMMAND_DESCRIPTION
+    },
+    alert.COMMAND_NAME: {
+        "initial": alert.alert_prompts[0]["prompt"],
+        "description": alert.COMMAND_DESCRIPTION
     }
 }
 
