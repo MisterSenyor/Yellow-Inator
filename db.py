@@ -27,9 +27,12 @@ def get_users_by_groups_OR(groups: list):
     for user, details in _db['users'].items():
         # Check if any of the user's battalion, company, or platoon match the given criteria
         for _, detail in details.items():
-            if detail in groups:
-                matching_users.append((user, details))
-                break
+            try:
+                if detail in groups:
+                    matching_users.append((user, details))
+                    break
+            except TypeError:
+                pass
 
     return matching_users
 
