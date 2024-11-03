@@ -1,12 +1,12 @@
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import points
-# import alert
 import user_statistics
 import exchange
 import signup
 import load_users
-import alert
+# import alert
+import add_test
 from api import APP, DEFAULT_BUTTON_HANDLER, DEFAULT_FILE_HANDLER, DEFAULT_INPUT_HANDLER
 
 
@@ -39,9 +39,13 @@ commands = {
         "initial": user_statistics.points_prompts[0]["prompt"],
         "description": user_statistics.COMMAND_DESCRIPTION
     },
-    alert.COMMAND_NAME: {
-        "initial": alert.alert_prompts[0]["prompt"],
-        "description": alert.COMMAND_DESCRIPTION
+    # alert.COMMAND_NAME: {
+        # "initial": alert.alert_prompts[0]["prompt"],
+        # "description": alert.COMMAND_DESCRIPTION
+    # },
+    add_test.COMMAND_NAME: {
+        "initial": add_test.points_prompts[0]["prompt"],
+        "description": add_test.COMMAND_DESCRIPTION
     }
 }
 

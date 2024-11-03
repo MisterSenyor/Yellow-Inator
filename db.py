@@ -141,6 +141,18 @@ def load_db_from_excel(filename: str):
     os.remove(filename)
     write_to_file(DB_PATH)
 
+def update_tests_db(data: dict):
+    """
+    format for data - "test-name": [groups]
+    """
+    for test in data.keys():
+        if test in _db["tests"]:
+            _db["tests"][test] = list(set(_db["tests"][test]) | set(data[test]))
+        else:
+            _db["tests"][test] = list(data[test])
+    
+    write_to_file(DB_PATH)
+
 def main():
     load_db_from_excel("temp_excel_files\\Harel_data.xlsx")
     
