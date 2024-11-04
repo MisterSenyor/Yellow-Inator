@@ -13,7 +13,7 @@ groups = db.get_groups()
 def _prompt_init_func(app, chat_id, chat_handlers) -> bool:
     if (user := db.get_user_by_chat_id(chat_id)) is None:
         return INIT_AUTH_ENUM["NOT_SIGNED_IN"]
-    if ROLES != set() and list(set(user[1]["roles"]) & ROLES) == [] and not ("ADMIN" in user[1]["roles"]):
+    if type(ROLES) == set and list(set(user[1]["roles"]) & ROLES) == [] and not ("ADMIN" in user[1]["roles"]):
         return INIT_AUTH_ENUM["NO_PERMISSION"]
     chat_prompt_state[chat_id] = 0
     chat_input[chat_id] = [None, None]  # Initialize the user's number as None

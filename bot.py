@@ -7,6 +7,7 @@ import signup
 import load_users
 # import alert
 import add_test
+import report_test
 from api import APP, DEFAULT_BUTTON_HANDLER, DEFAULT_FILE_HANDLER, DEFAULT_INPUT_HANDLER
 
 
@@ -46,6 +47,10 @@ commands = {
     add_test.COMMAND_NAME: {
         "initial": add_test.points_prompts[0]["prompt"],
         "description": add_test.COMMAND_DESCRIPTION
+    },
+    report_test.COMMAND_NAME: {
+        "initial": report_test.points_prompts[0]["prompt"],
+        "description": report_test.COMMAND_DESCRIPTION
     }
 }
 

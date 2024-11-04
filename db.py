@@ -97,6 +97,16 @@ def update_users_db(data: dict):
 
     write_to_file(DB_PATH)
 
+def get_tests_by_groups_OR(groups: list):
+    matching_tests = []
+    for test, test_groups in _db['tests'].items():
+        for group in test_groups:
+            if group in groups:
+                matching_tests.append((test, test_groups))
+                break
+
+    return matching_tests
+
 def load_db_from_excel(filename: str):
     # Load the Excel file into a pandas DataFrame
     df = pd.read_excel(filename)
